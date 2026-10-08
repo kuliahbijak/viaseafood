@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 450" preserveAspectRatio="xMidYMid slice">
+<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E6F2F0"/><stop offset="1" stop-color="#F3C9BB"/></linearGradient></defs>
+<rect width="600" height="450" fill="url(#bg)"/>
+<path d="M0 360 Q 75 350 150 360 T 300 360 T 450 360 T 600 360" stroke="#FFFFFF" stroke-opacity=".35" stroke-width="3" fill="none"/><path d="M0 392 Q 75 382 150 392 T 300 392 T 450 392 T 600 392" stroke="#FFFFFF" stroke-opacity=".35" stroke-width="3" fill="none"/><path d="M0 424 Q 75 414 150 424 T 300 424 T 450 424 T 600 424" stroke="#FFFFFF" stroke-opacity=".35" stroke-width="3" fill="none"/>
+<ellipse cx="300" cy="330" rx="190" ry="22" fill="#0D4F4F" opacity=".08"/>
+<g transform="translate(150 120)"><ellipse cx="150" cy="120" rx="120" ry="80" fill="#D9573C"/><ellipse cx="150" cy="104" rx="90" ry="44" fill="#E8735A" opacity=".7"/><g stroke="#C24A31" stroke-width="12" stroke-linecap="round" fill="none"><path d="M40 140l-40 36M50 160l-30 50M250 140l40 36M240 160l30 50M60 100L10 60M240 100l50-40"/></g><path d="M10 60c-30-10-34-40-10-50 14 18 30 24 44 20z" fill="#D9573C"/><path d="M290 60c30-10 34-40 10-50-14 18-30 24-44 20z" fill="#D9573C"/><circle cx="126" cy="64" r="9" fill="#1F2937"/><circle cx="174" cy="64" r="9" fill="#1F2937"/></g>
+</svg>

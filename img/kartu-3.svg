@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice">
+<defs><linearGradient id="k" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9FD4CF"/><stop offset=".6" stop-color="#E6F2F0"/></linearGradient></defs>
+<rect width="1200" height="600" fill="url(#k)"/><circle cx="980" cy="120" r="60" fill="#F6C27A"/>
+<path d="M0 330 C 200 290 400 300 600 320 S 1000 290 1200 320 V420 H0Z" fill="#5FA8A2"/>
+<path d="M0 380 C 260 350 520 370 760 360 S 1080 350 1200 370 V600 H0Z" fill="#2A7A73"/>
+<rect y="455" width="1200" height="145" fill="#3B4A4A"/><rect x="20" y="522" width="70" height="8" rx="4" fill="#F6C27A"/><rect x="160" y="522" width="70" height="8" rx="4" fill="#F6C27A"/><rect x="300" y="522" width="70" height="8" rx="4" fill="#F6C27A"/><rect x="440" y="522" width="70" height="8" rx="4" fill="#F6C27A"/><rect x="580" y="522" width="70" height="8" rx="4" fill="#F6C27A"/><rect x="720" y="522" width="70" height="8" rx="4" fill="#F6C27A"/><rect x="860" y="522" width="70" height="8" rx="4" fill="#F6C27A"/><rect x="1000" y="522" width="70" height="8" rx="4" fill="#F6C27A"/><rect x="1140" y="522" width="70" height="8" rx="4" fill="#F6C27A"/>
+<g transform="translate(330 300)"><rect x="0" y="40" width="330" height="150" rx="14" fill="#FAF7F2"/><rect x="0" y="40" width="330" height="36" rx="14" fill="#0D4F4F"/><text x="165" y="66" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="700" fill="#FAF7F2" letter-spacing="3">SEAFOOD SEGAR</text>
+<path d="M330 92h96l64 56v42H330z" fill="#E8A33D"/><path d="M350 106h66l42 38h-108z" fill="#C2DFDD"/>
+<circle cx="80" cy="196" r="32" fill="#1F2937"/><circle cx="80" cy="196" r="13" fill="#C2DFDD"/><circle cx="420" cy="196" r="32" fill="#1F2937"/><circle cx="420" cy="196" r="13" fill="#C2DFDD"/>
+<path d="M60 110c12-14 34-18 52-10l14-10-4 16 4 16-14-10c-18 8-40 4-52-2z" fill="#E8664A" transform="translate(40 10) scale(1.4)"/></g>
+</svg>

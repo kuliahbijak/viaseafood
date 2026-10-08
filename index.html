@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0D4F4F">
+  <meta name="description" content="Via Seafood — pembukuan pesanan harian, stok cold storage, piutang & rekap pelanggan.">
+  <meta name="robots" content="noindex">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Via Seafood — Buku Kas Laut</title>
+  <link rel="icon" type="image/svg+xml" href="img/logo.svg">
+  <link rel="apple-touch-icon" href="img/logo.svg">
+  <link rel="manifest" href="manifest.webmanifest">
+  <!-- Sambungan dini ke server Apps Script & CDN (memotong waktu jabat tangan TLS) -->
+  <link rel="preconnect" href="https://script.google.com">
+  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
+  <link rel="dns-prefetch" href="https://script.googleusercontent.com">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="css/style.css?v=1.0.0">
+  <style>
+    /* Layar pembuka instan (sebelum CSS & skrip utama siap) */
+    .boot{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:#062828;color:#C2DFDD;font:600 14px/1.4 'Plus Jakarta Sans',system-ui,sans-serif;z-index:1}
+    .boot img{width:72px;height:72px;border-radius:18px;box-shadow:0 12px 30px rgba(0,0,0,.35)}
+    .boot b{font:700 26px/1.1 'Playfair Display',Georgia,serif;color:#fff}
+    .boot i{width:120px;height:4px;border-radius:9px;background:rgba(255,255,255,.12);overflow:hidden;position:relative}
+    .boot i::after{content:'';position:absolute;left:-40%;width:40%;height:100%;border-radius:9px;background:#E8A33D;animation:bootbar 1.1s ease-in-out infinite}
+    @keyframes bootbar{to{left:100%}}
+  </style>
+  <!-- config dimuat sinkron agar server bisa "dibangunkan" sedini mungkin -->
+  <script src="js/config.js?v=1.0.0"></script>
+  <script>
+    (function () {
+      try {
+        var u = window.GAS_URL; if (!u || /XXXX/.test(u)) return;
+        var s = null; try { s = JSON.parse(localStorage.getItem('vs:v1:sesi') || 'null'); } catch (e) { }
+        window._preWarm = Date.now();
+        fetch(u + '?w=' + (s && s.token ? 'app' : 'pub') + '&t=' + Date.now(), { mode: 'no-cors', cache: 'no-store' }).catch(function () { });
+      } catch (e) { }
+    })();
+  </script>
+  <script defer src="js/icons.js?v=1.0.0"></script>
+  <script defer src="js/vendor/qrcode.js?v=2.0.4"></script>
+  <script defer src="js/core.js?v=1.0.0"></script>
+  <script defer src="js/struk.js?v=1.0.0"></script>
+  <script defer src="js/app.js?v=1.0.0"></script>
+  <script defer src="js/pages-pesanan.js?v=1.0.0"></script>
+  <script defer src="js/pages-produk.js?v=1.0.0"></script>
+  <script defer src="js/pages-pelanggan.js?v=1.0.0"></script>
+  <!-- Halaman khusus Owner (dashboard, keuangan, pengaturan, WhatsApp & CRM, dokumen, audit) dimuat lazy oleh core.js -->
+</head>
+<body>
+  <div id="app"><div class="boot"><img src="img/logo.svg" alt=""><b>Via Seafood</b><i></i><span>Menyiapkan buku kas…</span></div></div>
+  <noscript><p style="padding:24px;font-family:sans-serif">Aplikasi ini membutuhkan JavaScript. Aktifkan JavaScript di browser Anda.</p></noscript>
+</body>
+</html>

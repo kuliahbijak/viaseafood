@@ -1,0 +1,15 @@
+{
+  "name": "Via Seafood — Buku Kas Laut",
+  "short_name": "Via Seafood",
+  "description": "Pembukuan pesanan harian, stok cold storage, piutang & rekap pelanggan.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#062828",
+  "theme_color": "#0D4F4F",
+  "lang": "id",
+  "icons": [
+    { "src": "img/logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
