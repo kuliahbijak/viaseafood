@@ -20,6 +20,7 @@ var Pesanan = {
   key: function (tgl) { return 'pesanan:' + tgl; },
   sisipLokal: function (o) {
     var k = this.key(o.tanggal), d = swrPeek(k); if (!d) return;
+    if (!d.rows) d = this.hariData(d);
     var i = d.rows.findIndex(function (x) { return x.id === o.id; });
     if (i > -1) d.rows[i] = Object.assign(d.rows[i], o); else d.rows.push(o);
     swrPut(k, d);
@@ -68,7 +69,7 @@ var Pesanan = {
   muat: function (el, paksa) {
     var self = this, st = this.st, tgl = st.tanggal;
     return swr(this.key(tgl), 'pesanan.list', { tanggal: tgl }, null, { fresh: tgl === hariIni() ? 20000 : 600000, force: paksa, noStore: true, onError: function (r) { el.querySelector('#psTbl tbody').innerHTML = '<tr><td colspan="7">' + retryBox(r) + '</td></tr>'; } })
-      .then(function (r) { if (r.success && !r.cached) { swrPut(self.key(tgl), self.hariData(r.data)); } st.data = swrPeek(self.key(tgl)); self.render(el); })
+      .then(function (r) { if (r.success && !r.cached) { swrPut(self.key(tgl), self.hariData(r.data)); } var d = swrPeek(self.key(tgl)); if (d && !d.rows) { d = self.hariData(d); swrPut(self.key(tgl), d); } st.data = d; self.render(el); })
       .then(null, function () { });
   },
   tick: function (el) {
@@ -410,13 +411,13 @@ var InputPesanan = {
       '<div class="card sec-card"><div class="sec-head">' + ic('fish') + '<span class="t">2. Rincian Item Produk Laut</span><span class="r"><span class="badge b-amber" id="ipJmlItem">0 Item</span></span></div><div class="sec-body"><div id="ipItems"></div>' +
       '<button class="add-row" data-act="tambah">' + ic('circle-plus') + 'Tambah Baris Produk Laut (F2)</button>' +
       '<div class="total-card"><span class="ic-box amber" style="background:var(--amber);color:var(--ink)">' + ic('banknote') + '</span><div><div class="label-up" style="color:var(--ink)">Total Keseluruhan Nota</div><div class="muted" style="font-size:12.5px" id="ipBerat">Total Berat Bersih: 0 kg</div></div><div class="big"><div class="v" id="ipTotalBig">Rp 0</div><div style="font-size:12px;color:var(--paid);font-weight:600" id="ipPot"></div></div></div>' +
-      '<div class="grid-3 mt"><div class="field"><label>Diskon / Potongan (Rp)</label><div class="affix soft"><span class="ad">Rp</span><input id="ipDiskon" inputmode="numeric" placeholder="0"></div></div><div class="field"><label id="ipPajakLbl">Pajak</label><div class="affix soft"><span class="ad">Rp</span><input id="ipPajak" readonly></div></div><div class="field"><label>Subtotal</label><div class="affix soft"><span class="ad">Rp</span><input id="ipSub" readonly></div></div></div>' +
+      '<div class="grid-3 mt"><div class="field"><label>Diskon / Potongan (Rp)</label><div class="affix soft"><span class="ad">Rp</span><input id="ipDiskon" inputmode="numeric" data-rp placeholder="0"></div></div><div class="field"><label id="ipPajakLbl">Pajak</label><div class="affix soft"><span class="ad">Rp</span><input id="ipPajak" readonly></div></div><div class="field"><label>Subtotal</label><div class="affix soft"><span class="ad">Rp</span><input id="ipSub" readonly></div></div></div>' +
       // 3. pembayaran
       '<div class="label-up mt-l row gap-s" style="color:var(--ink)">' + ic('wallet', 'sm') + 'Skema Pembayaran <span class="req">*</span></div><div class="pay-grid mt-s">' +
       '<label class="pay-card lunas" id="pcLunas"><input type="radio" name="ipBayar" value="Lunas" checked><div><div class="t">● Lunas Langsung <span class="badge b-dark" style="background:var(--paid);font-size:11px">Tunai / Transfer</span></div><div class="d">Uang kas langsung masuk buku harian, tidak menambah saldo piutang.</div></div></label>' +
       '<label class="pay-card hutang" id="pcHutang"><input type="radio" name="ipBayar" value="Hutang"><div><div class="t">○ Hutang / Tempo (Piutang) <span class="badge b-hutang" id="ipTempoBadge" style="font-size:11px">Jatuh Tempo 7 Hari</span></div><div class="d" id="ipHutangDesc">Masuk ke Buku Piutang Pelanggan.</div></div></label></div>' +
-      '<div class="pay-extra" id="ipLunasX"><div class="field"><label>Metode</label><div class="seg" id="ipMetode"><button data-m="Tunai" class="on">Tunai</button><button data-m="Transfer">Transfer</button><button data-m="QRIS">QRIS</button></div></div><div class="field" id="ipTerimaWrap"><label>Uang Diterima</label><div class="affix soft"><span class="ad">Rp</span><input id="ipTerima" inputmode="numeric" placeholder="Pas"></div><div class="quick-chips" id="ipPas"></div></div><div class="field"><label>Kembalian</label><div class="affix soft"><span class="ad">Rp</span><input id="ipKembali" readonly value="0"></div></div></div>' +
-      '<div class="pay-extra" id="ipHutangX" hidden><div class="field"><label>Jatuh Tempo</label><input class="input soft" type="date" id="ipJT"></div><div class="field"><label>Tempo (hari)</label><div class="seg" id="ipTempoSeg"><button data-t="3">3</button><button data-t="7">7</button><button data-t="14">14</button><button data-t="30">30</button></div></div><div class="field"><label>Uang Muka (DP) <span class="hint">opsional</span></label><div class="affix soft"><span class="ad">Rp</span><input id="ipDp" inputmode="numeric" placeholder="0"></div></div></div>' +
+      '<div class="pay-extra" id="ipLunasX"><div class="field"><label>Metode</label><div class="seg" id="ipMetode"><button data-m="Tunai" class="on">Tunai</button><button data-m="Transfer">Transfer</button><button data-m="QRIS">QRIS</button></div></div><div class="field" id="ipTerimaWrap"><label>Uang Diterima</label><div class="affix soft"><span class="ad">Rp</span><input id="ipTerima" inputmode="numeric" data-rp placeholder="Pas"></div><div class="quick-chips" id="ipPas"></div></div><div class="field"><label>Kembalian</label><div class="affix soft"><span class="ad">Rp</span><input id="ipKembali" readonly value="0"></div></div></div>' +
+      '<div class="pay-extra" id="ipHutangX" hidden><div class="field"><label>Jatuh Tempo</label><input class="input soft" type="date" id="ipJT"></div><div class="field"><label>Tempo (hari)</label><div class="seg" id="ipTempoSeg"><button data-t="3">3</button><button data-t="7">7</button><button data-t="14">14</button><button data-t="30">30</button></div></div><div class="field"><label>Uang Muka (DP) <span class="hint">opsional</span></label><div class="affix soft"><span class="ad">Rp</span><input id="ipDp" inputmode="numeric" data-rp placeholder="0"></div></div></div>' +
       '<div class="grid-2 mt"><div class="field"><label><span>Catatan / Instruksi Pengiriman</span><span class="muted" style="font-weight:500">Opsional</span></label><textarea class="textarea soft" id="ipCatatan" placeholder="Mis. pengiriman siang jam 13:00, tambah es batu di coolbox"></textarea></div>' +
       '<div class="field"><label><span>Foto Nota / Slip Transfer</span><span class="muted" style="font-weight:500">Maks 5 MB</span></label><div class="upload-box" id="ipUpload">' + ic('image-plus', 'lg') + '<b style="margin-top:6px">Ambil Foto / Pilih File</b><span class="muted" style="font-size:12px">Klik untuk upload bukti fisik</span></div></div></div>' +
       '</div></div>' +
@@ -444,9 +445,9 @@ var InputPesanan = {
     $('#ipWa').oninput = function (e) { self.F.pelanggan.wa = e.target.value; self.simpanDraft(); };
     $('#ipAlamat').oninput = function (e) { self.F.pelanggan.alamat = e.target.value; self.simpanDraft(); };
     $('#ipTipe').onchange = function (e) { self.F.pelanggan.tipe = e.target.value; };
-    $('#ipDiskon').oninput = function (e) { self.F.diskon = parseAngka(e.target.value); self.hitung(); };
-    $('#ipTerima').oninput = function (e) { self.F.diterima = e.target.value === '' ? '' : parseAngka(e.target.value); self.hitung(false); };
-    $('#ipDp').oninput = function (e) { self.F.dp = parseAngka(e.target.value); self.hitung(false); };
+    $('#ipDiskon').oninput = function (e) { self.F.diskon = parseRp(e.target.value); self.hitung(); };
+    $('#ipTerima').oninput = function (e) { self.F.diterima = /\d/.test(e.target.value) ? parseRp(e.target.value) : ''; self.hitung(false); };
+    $('#ipDp').oninput = function (e) { self.F.dp = parseRp(e.target.value); self.hitung(false); };
     $('#ipJT').onchange = function (e) { self.F.jatuhTempo = e.target.value; self.hitung(false); };
     $('#ipCatatan').oninput = function (e) { self.F.catatan = e.target.value; self.simpanDraft(); };
     el.querySelectorAll('input[name=ipBayar]').forEach(function (r) { r.onchange = function () { self.F.statusBayar = r.value; self.hitung(); }; });
@@ -518,7 +519,7 @@ var InputPesanan = {
       return '<div class="item-row" data-i="' + i + '"><div class="thumb" style="background-image:url(\'' + esc(App.fotoProduk(p)) + '\')"></div>' +
         '<div class="prod"><div class="lbl">Pilih Produk</div><div class="combo-host"><input class="input cari-prod" style="background:#fff" placeholder="Cari produk / SKU…" value="' + esc(p ? p.nama + ' (Stok: ' + angka(p.stok) + ' ' + p.satuan + ')' : '') + '" autocomplete="off"></div></div>' +
         '<div class="qty"><div class="lbl">Berat / Qty</div><div class="affix" style="background:#fff"><input class="qty-in" inputmode="decimal" style="text-align:center;font-weight:700;font-size:17px" value="' + (it.qty === '' ? '' : String(it.qty).replace('.', ',')) + '" placeholder="0"><span class="ad r">' + esc(p ? p.satuan : 'kg') + '</span></div></div>' +
-        '<div class="harga"><div class="lbl">Harga / ' + esc(p ? p.satuan : 'Kg') + '</div><div class="affix" style="background:#fff"><span class="ad">Rp</span><input class="harga-in" inputmode="numeric" style="text-align:right;font-weight:600" value="' + (p ? angka(it.harga !== '' && it.harga != null ? it.harga : p.harga) : '') + '"' + (boleh ? '' : ' readonly title="Harga mengikuti katalog (izin ubah harga tidak aktif)"') + '></div></div>' +
+        '<div class="harga"><div class="lbl">Harga / ' + esc(p ? p.satuan : 'Kg') + '</div><div class="affix" style="background:#fff"><span class="ad">Rp</span><input class="harga-in" inputmode="numeric" data-rp style="text-align:right;font-weight:600" value="' + (p ? angka(it.harga !== '' && it.harga != null ? it.harga : p.harga) : '') + '"' + (boleh ? '' : ' readonly title="Harga mengikuti katalog (izin ubah harga tidak aktif)"') + '></div></div>' +
         '<div class="sub-v"><div class="lbl">Subtotal</div><b class="sub-txt">Rp 0</b></div><button class="del" data-act="hapus" data-i="' + i + '" aria-label="Hapus baris">' + ic('trash-2', 'sm') + '</button><div class="stok-warn" hidden></div></div>';
     }).join('');
     box.querySelectorAll('.item-row').forEach(function (row) {
@@ -528,7 +529,8 @@ var InputPesanan = {
         onPick: function (p) { it.produkId = p.id; it.harga = ''; self.renderItems(); self.hitung(); var q = box.querySelectorAll('.item-row')[i].querySelector('.qty-in'); if (q) q.focus(); } });
       row.querySelector('.qty-in').oninput = function (e) { it.qty = parseAngka(e.target.value); self.hitung(); };
       row.querySelector('.qty-in').onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); if (i === self.F.items.length - 1 && it.produkId) self.tambahBaris(true); else { var nx = box.querySelectorAll('.cari-prod')[i + 1]; if (nx) nx.focus(); } } };
-      row.querySelector('.harga-in').oninput = function (e) { it.harga = parseAngka(e.target.value); self.hitung(); };
+      row.querySelector('.harga-in').oninput = function (e) { it.harga = parseRp(e.target.value); self.hitung(); };
+      row.querySelector('.harga-in').onblur = function (e) { if (!e.target.readOnly && !/\d/.test(e.target.value) && it.produkId) { e.target.value = '0'; it.harga = 0; self.hitung(); } };
     });
   },
   totals: function () {
@@ -588,6 +590,7 @@ var InputPesanan = {
     if (this.F.items.some(function (i) { return i.produkId && !(Number(i.qty) > 0); })) return 'Ada baris produk dengan berat 0.';
     if (!cfg.stokMinusBoleh) { var lebih = Object.keys(t.butuh).filter(function (id) { return t.butuh[id] > t.pm[id].stok + 1e-9; }); if (lebih.length) return 'Stok tidak cukup: ' + lebih.map(function (id) { return t.pm[id].nama; }).join(', '); }
     if (p.statusBayar === 'Hutang' && (!p.pelanggan.nama || /^pelanggan umum/i.test(p.pelanggan.nama))) return 'Pesanan hutang wajib memakai nama pelanggan.';
+    if (p.statusBayar === 'Hutang' && !(t.total > 0)) return 'Nota tempo/hutang harus bernilai lebih dari Rp 0. Nota bernilai Rp 0 (bonus/sampel) simpan sebagai Lunas.';
     if (p.statusBayar === 'Lunas' && p.diterima !== undefined && p.diterima < t.total) return 'Uang diterima kurang dari total. Pilih Hutang/Tempo bila belum lunas.';
     if (p.pelanggan.wa && !hpValid(p.pelanggan.wa)) return 'Nomor WhatsApp tidak valid.';
     return '';

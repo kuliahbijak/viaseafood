@@ -24,16 +24,19 @@ var Dokumen = {
     this.muatTemplate().then(function () {
       setBusy(btn, false);
       var t = opsi.kode ? self.tpl.filter(function (x) { return x.kode === opsi.kode; })[0] : self.utama(jenis);
-      if (!t) return toast('Template belum tersedia', 'Owner dapat mengatur template di menu Dokumen & Struk.', 'warn');
-      var formatLain = t.keluaran.filter(function (f) { return f !== 'pdf'; });
-      if (!(t.bidang || []).length && !opsi.tanya) return self.terbitkan(t, ref, {}, 'pdf', btn);
+      if (!t && opsi.kode) return toast('Template belum tersedia', 'Owner dapat mengatur template di menu Dokumen & Struk.', 'warn');
+      // template bawaan yang belum terpasang (instalasi lama) dibuat otomatis oleh server saat dicetak
+      if (!t) t = { jenis: jenis, kode: '', nama: ((self.konteks || {})[jenis] || {}).label || 'Dokumen', versi: '', engine: opsi.format === 'xlsx' ? 'sheets' : '', keluaran: opsi.format && opsi.format !== 'pdf' ? ['pdf', opsi.format] : ['pdf'], bidang: [], _sementara: true };
+      var formatLain = t.keluaran.filter(function (f) { return f !== 'pdf'; }), fmtAwal = opsi.format && t.keluaran.indexOf(opsi.format) > -1 ? opsi.format : 'pdf';
+      if (!(t.bidang || []).length && !opsi.tanya) return self.terbitkan(t, ref, {}, fmtAwal, btn);
       var m = modal({ judul: esc(t.nama), sub: 'Ref: ' + esc(ref) + ' • template ' + esc(t.kode) + ' v' + t.versi, ikon: 'file-text', lebar: 'mid',
         isi: '<form id="dcF">' + (t.bidang || []).map(function (b) {
           var nm = 'b_' + b.kunci, ctrl = b.tipe === 'area' ? '<textarea class="textarea" name="' + nm + '"></textarea>' : b.tipe === 'pilihan' && (b.opsi || []).length ? '<select class="select" name="' + nm + '">' + selectOpts(b.opsi, '') + '</select>' : '<input class="input" name="' + nm + '" type="' + (b.tipe === 'tanggal' ? 'date' : 'text') + '"' + (b.tipe === 'angka' ? ' inputmode="decimal"' : '') + '>';
           return fld(esc(b.label), ctrl, { req: b.wajib, hint: esc(b.bantu || ''), cls: 'mb' });
         }).join('') + (formatLain.length ? fld('Format', '<div class="seg" id="dcFmt"><button type="button" class="on" data-f="pdf">PDF</button>' + formatLain.map(function (f) { return '<button type="button" data-f="' + f + '">' + f.toUpperCase() + '</button>'; }).join('') + '</div>') : '') + '</form>',
         foot: '<button class="btn btn-outline" data-x>Batal</button><button class="btn btn-primary" id="dcOk">' + ic('file-check-2', 'sm') + 'Terbitkan</button>' });
-      var fmt = 'pdf';
+      var fmt = fmtAwal;
+      if (m.$('#dcFmt')) m.$$('#dcFmt button').forEach(function (x) { x.classList.toggle('on', x.dataset.f === fmt); });
       if (m.$('#dcFmt')) m.$('#dcFmt').onclick = function (e) { var b = e.target.closest('[data-f]'); if (!b) return; fmt = b.dataset.f; m.$$('#dcFmt button').forEach(function (x) { x.classList.toggle('on', x === b); }); };
       m.$('#dcOk').onclick = function () {
         var isian = {}, kurang = null;
@@ -49,6 +52,7 @@ var Dokumen = {
     return api('doc.print', { jenis: t.jenis, kode: t.kode, ref: ref, isian: isian, format: format }, { timeout: 330000 }).then(function (r) {
       setBusy(btn, false); tst.remove();
       if (!r.success) { toast('Gagal menerbitkan', r.message, 'err'); return false; }
+      if (t._sementara) self.tpl = null;
       self.hasil(r.data, { t: t, ref: ref, isian: isian }); return true;
     });
   },
@@ -67,8 +71,9 @@ var Dokumen = {
     if (m.$('#dhVer')) m.$('#dhVer').onclick = function () { salinTeks(d.verifikasi).then(function () { toast('Tautan verifikasi disalin', d.verifikasi); }); };
   },
   /** Cetak massal (nota per tanggal / tagihan semua pelanggan berpiutang) → ZIP. */
-  massal: function (jenis) {
-    var self = this;
+  massal: function (jenis, opsi) {
+    var self = this; opsi = opsi || {};
+    if (jenis === 'REKAP_PER_PELANGGAN') return this.massalRekapPlg(opsi);
     var m = modal({ judul: 'Cetak Massal ' + (jenis === 'NOTA' ? 'Nota' : 'Surat Tagihan'), ikon: 'files', lebar: 'mid', sub: 'Diproses bertahap di server, hasil dikumpulkan dalam satu ZIP di Google Drive.',
       isi: jenis === 'NOTA' ? fld('Tanggal pesanan', '<input class="input" type="date" id="msTgl" value="' + hariIni() + '" max="' + hariIni() + '">', { hint: 'Semua nota (kecuali batal) pada tanggal ini' }) : '<label class="check"><input type="checkbox" id="msLewat"> Hanya pelanggan yang lewat jatuh tempo</label>',
       foot: '<button class="btn btn-outline" data-x>Batal</button><button class="btn btn-primary" id="msOk">' + ic('play', 'sm') + 'Mulai</button>' });
@@ -76,6 +81,23 @@ var Dokumen = {
       var b = this, d = { jenis: jenis }; if (jenis === 'NOTA') d.tanggal = m.$('#msTgl').value; else d.lewatSaja = m.$('#msLewat').checked;
       setBusy(b, true);
       api('doc.massal', d).then(function (r) { setBusy(b, false); if (!toastRes(r)) return; m.close(); self.pantauMassal(r.data.massalId, r.data.total); });
+    };
+  },
+  /** Rekap lengkap tiap pelanggan (PDF + Excel per pelanggan) dalam satu ZIP. */
+  massalRekapPlg: function (opsi) {
+    var self = this, tipe = ((AppState.cfg || {}).tipePelanggan || []);
+    var m = modal({ judul: 'Rekap per Pelanggan — Semua Sekaligus', ikon: 'files', lebar: 'mid', sub: 'Setiap pelanggan mendapat rekap PDF dan Excel masing-masing, dikumpulkan dalam satu ZIP di Google Drive.',
+      isi: '<div class="grid-2">' + fld('Periode', '<input class="input" type="month" id="mrPer" value="' + esc(opsi.periode || periodeIni()) + '" max="' + periodeIni() + '">') +
+        fld('Tipe pelanggan', '<select class="select" id="mrTipe">' + selectOpts(tipe, opsi.tipe || (tipe.indexOf('Restoran') > -1 ? 'Restoran' : ''), 'Semua tipe') + '</select>', { hint: 'Mis. hanya Restoran' }) + '</div>' +
+        '<div class="note-teal mt">' + ic('info', 'sm') + '<span>Hanya pelanggan yang bertransaksi pada periode tersebut. Berkas juga tersimpan satu per satu di <b>Arsip Terbit</b>.</span></div>',
+      foot: '<button class="btn btn-outline" data-x>Batal</button><button class="btn btn-primary" id="mrOk">' + ic('play', 'sm') + 'Mulai</button>' });
+    m.$('#mrOk').onclick = function () {
+      var b = this; setBusy(b, true);
+      api('doc.massal', { jenis: 'REKAP_PER_PELANGGAN', periode: m.$('#mrPer').value || periodeIni(), tipe: m.$('#mrTipe').value }).then(function (r) {
+        setBusy(b, false);
+        if (!r.success) return toast(/Tidak ada data/.test(r.message) ? 'Tidak ada pelanggan bertransaksi' : 'Gagal', /Tidak ada data/.test(r.message) ? 'Tidak ada pelanggan ' + (m.$('#mrTipe').value || '') + ' yang bertransaksi pada periode ini.' : r.message, 'warn');
+        toast('Masuk antrean', r.data.total + ' pelanggan × (PDF + Excel)'); m.close(); self.pantauMassal(r.data.massalId, r.data.total);
+      });
     };
   },
   pantauMassal: function (id, total) {
@@ -129,7 +151,7 @@ var Dokumen = {
     box.innerHTML = '<div class="note-teal mt">' + ic('lightbulb') + '<span><b>Cara mengubah desain:</b> klik <b>Buka di Google</b>, ubah tata letak/teks/logo langsung di Google Docs/Sheets (penanda seperti <code>{{NAMA_PELANGGAN}}</code> jangan dihapus), lalu klik <b>Pindai ulang</b>. Atau <b>Ganti berkas</b> dengan .docx/.xlsx buatan Anda sendiri. Setiap perubahan tersimpan sebagai versi baru dan bisa dikembalikan.</span></div>' +
       Object.keys(grup).map(function (j) {
         var k = self.konteks[j] || {};
-        return '<div class="card sec-card"><div class="sec-head"><span class="ic-box sm">' + ic(j === 'NOTA' ? 'receipt-text' : j === 'KWITANSI' ? 'banknote' : j === 'TAGIHAN' ? 'clipboard-clock' : j === 'REKAP_PELANGGAN' ? 'users-round' : j === 'LAPORAN_HARIAN' ? 'calendar' : 'wallet') + '</span><div><div class="t">' + esc(k.label || j) + '</div><div class="muted" style="font-size:12.5px">Referensi: ' + esc(k.ref || '-') + (k.massal ? ' • mendukung cetak massal' : '') + '</div></div></div><div class="sec-body"><div class="grid-2">' +
+        return '<div class="card sec-card"><div class="sec-head"><span class="ic-box sm">' + ic(j === 'NOTA' ? 'receipt-text' : j === 'KWITANSI' ? 'banknote' : j === 'TAGIHAN' ? 'clipboard-clock' : j === 'REKAP_PELANGGAN' ? 'users-round' : j === 'REKAP_PER_PELANGGAN' ? 'contact-round' : j === 'LAPORAN_HARIAN' ? 'calendar' : 'wallet') + '</span><div><div class="t">' + esc(k.label || j) + '</div><div class="muted" style="font-size:12.5px">Referensi: ' + esc(k.ref || '-') + (k.massal ? ' • mendukung cetak massal' : '') + '</div></div></div><div class="sec-body"><div class="grid-2">' +
           grup[j].map(function (t) {
             return '<div class="box tpl-card" data-kode="' + esc(t.kode) + '" style="margin:0' + (t.aktif ? '' : ';opacity:.6') + '"><div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px"><div><div class="tt">' + esc(t.nama) + '</div><div class="td mono">' + esc(t.kode) + ' • v' + t.versi + ' • ' + (t.engine === 'sheets' ? 'Google Sheets' : 'Google Docs') + ' • ' + esc(t.kertas || 'A4') + (t.orientasi === 'lanskap' ? ' lanskap' : '') + '</div></div>' +
               '<div class="row gap-s">' + (t.utama ? '<span class="badge b-lunas">Utama</span>' : '') + (t.standar ? '<span class="badge b-dark">Bawaan</span>' : '') + '<label class="switch" title="Aktif"><input type="checkbox" data-aktif' + (t.aktif ? ' checked' : '') + '><span></span></label></div></div>' +
@@ -151,8 +173,8 @@ var Dokumen = {
     };
   },
   ujiCetak: function (t, btn) {
-    var self = this, k = this.konteks[t.jenis] || {}, saran = t.jenis === 'REKAP_PELANGGAN' ? periodeIni() : t.jenis === 'LAPORAN_KEUANGAN' ? periodeIni() + '-01_' + hariIni() : t.jenis === 'LAPORAN_HARIAN' ? hariIni() : '';
-    var m = modal({ judul: 'Uji cetak ' + esc(t.nama), ikon: 'file-check-2', isi: fld(esc(k.ref || 'Referensi'), '<input class="input" id="ujRef" value="' + esc(saran) + '" autofocus placeholder="' + esc(k.ref || '') + '">', { hint: t.jenis === 'NOTA' ? 'Salin nomor nota dari menu Pesanan Harian' : t.jenis === 'KWITANSI' ? 'ID pembayaran ada di riwayat piutang (BYR-…)' : t.jenis === 'TAGIHAN' ? 'ID pelanggan (PLG-…) ada di menu Rekap Pelanggan' : '' }),
+    var self = this, k = this.konteks[t.jenis] || {}, saran = t.jenis === 'REKAP_PELANGGAN' ? periodeIni() : t.jenis === 'LAPORAN_KEUANGAN' ? periodeIni() + '-01_' + hariIni() : t.jenis === 'LAPORAN_HARIAN' ? hariIni() : t.jenis === 'REKAP_PER_PELANGGAN' ? ((AppState.pelanggan[0] || {}).id ? AppState.pelanggan[0].id + '_' : '') + periodeIni() : '';
+    var m = modal({ judul: 'Uji cetak ' + esc(t.nama), ikon: 'file-check-2', isi: fld(esc(k.ref || 'Referensi'), '<input class="input" id="ujRef" value="' + esc(saran) + '" autofocus placeholder="' + esc(k.ref || '') + '">', { hint: t.jenis === 'NOTA' ? 'Salin nomor nota dari menu Pesanan Harian' : t.jenis === 'KWITANSI' ? 'ID pembayaran ada di riwayat piutang (BYR-…)' : t.jenis === 'TAGIHAN' ? 'ID pelanggan (PLG-…) ada di menu Rekap Pelanggan' : t.jenis === 'REKAP_PER_PELANGGAN' ? 'ID pelanggan + periode, mis. PLG-00001_' + periodeIni() + ' atau rentang PLG-00001_' + periodeIni() + '-01_' + hariIni() : '' }),
       foot: '<button class="btn btn-outline" data-x>Batal</button><button class="btn btn-primary" id="ujOk">Cetak</button>' });
     m.$('#ujOk').onclick = function () { var ref = m.$('#ujRef').value.trim(); if (!ref) return; m.close(); self.cetak(t.jenis, ref, btn, { kode: t.kode, tanya: true }); };
   },

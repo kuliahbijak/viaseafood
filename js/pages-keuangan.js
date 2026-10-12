@@ -139,7 +139,7 @@ var Keuangan = {
       foot: '<button class="btn btn-outline" data-x>Batal</button><button class="btn ' + (jenis === 'Pemasukan' ? 'btn-primary' : 'btn-danger') + '" id="kfOk">' + ic('save', 'sm') + 'Simpan</button>' });
     m.$('#kfChips').onclick = function (e) { var b = e.target.closest('[data-k]'); if (b) m.$('#f_kategori').value = b.dataset.k; };
     m.$('#kfOk').onclick = function () {
-      var f = formData(m.$('#kf')), b = m.$('#kfOk'), jml = parseAngka(f.jumlah);
+      var f = formData(m.$('#kf')), b = m.$('#kfOk'), jml = parseRp(f.jumlah);
       if (!(jml > 0)) { m.$('#f_jumlah').parentNode.classList.add('is-err'); return toast('Jumlah wajib diisi', '', 'err'); }
       setBusy(b, true);
       api('kas.save', { id: r ? r.id : '', jenis: jenis, jumlah: jml, kategori: f.kategori, tanggal: f.tanggal, keterangan: f.keterangan }).then(function (x) { setBusy(b, false); if (toastRes(x)) { m.close(); self.segarkanKas(); } });
@@ -228,7 +228,7 @@ var Keuangan = {
     m.$('#byMet').onclick = function (e) { var b = e.target.closest('[data-v]'); if (!b) return; metode = b.dataset.v; m.$$('#byMet button').forEach(function (x) { x.classList.toggle('on', x === b); }); };
     m.$$('[data-j]').forEach(function (c) { c.onclick = function () { m.$('#f_jumlah').value = angka(+c.dataset.j); }; });
     m.$('#byOk').onclick = function () {
-      var f = formData(m.$('#byf')), j = parseAngka(f.jumlah), b = m.$('#byOk');
+      var f = formData(m.$('#byf')), j = parseRp(f.jumlah), b = m.$('#byOk');
       if (!(j > 0)) return toast('Isi jumlah pembayaran', '', 'err');
       if (j > r.sisa) return toast('Melebihi sisa', 'Sisa piutang ' + rp(r.sisa) + '.', 'err');
       setBusy(b, true, 'Menyimpan…');

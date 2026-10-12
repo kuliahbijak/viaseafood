@@ -152,7 +152,7 @@ var Produk = {
   /* ---------- tambah / edit produk ---------- */
   form: function (p) {
     var c = AppState.cfg || {}, baru = !p, self = this, fotoData = null;
-    p = p || { nama: '', kategori: (c.kategori || [])[0] || '', satuan: 'kg', harga: 0, stokMin: c.stokMinDefault || 15, grade: '', deskripsi: '', aktif: true, sku: '', urut: 0 };
+    p = p || { nama: '', kategori: (c.kategori || [])[0] || '', satuan: 'kg', harga: '', stokMin: c.stokMinDefault || 15, grade: '', deskripsi: '', aktif: true, sku: '', urut: 0 };
     var m = modal({ judul: baru ? 'Tambah Produk Baru' : 'Edit Produk', sub: baru ? 'Komoditas baru langsung tersedia di Input Pesanan.' : esc(p.sku), ikon: baru ? 'circle-plus' : 'pencil', lebar: 'wide',
       isi: '<form id="pf" autocomplete="off"><div class="split" style="grid-template-columns:220px minmax(0,1fr)"><div><div class="upload-box" id="pfFoto" style="aspect-ratio:1;min-height:0">' + ic('image-plus', 'lg') + '<b class="mt-s">Foto produk</b><span class="muted" style="font-size:12px">Ketuk untuk ambil/unggah. Dikompres otomatis.</span></div>' +
         (p.foto ? '<button type="button" class="btn btn-ghost btn-sm btn-block mt-s" id="pfFotoHapus">' + ic('trash-2', 'sm') + 'Hapus foto</button>' : '') + '</div>' +
@@ -179,7 +179,7 @@ var Produk = {
     m.$('#pfOk').onclick = function () {
       var f = formData(m.$('#pf')), btn = m.$('#pfOk');
       if (f.nama.trim().length < 2) { m.$('#f_nama').classList.add('is-err'); m.$('#f_nama').focus(); return; }
-      var data = { id: p.id, nama: f.nama.trim(), kategori: f.kategori.trim(), sku: f.sku.trim(), harga: parseAngka(f.harga), satuan: f.satuan, stokMin: parseAngka(f.stokMin), grade: f.grade, deskripsi: f.deskripsi, urut: parseAngka(f.urut), aktif: baru ? true : f.aktif };
+      var data = { id: p.id, nama: f.nama.trim(), kategori: f.kategori.trim(), sku: f.sku.trim(), harga: parseRp(f.harga), satuan: f.satuan, stokMin: parseAngka(f.stokMin), grade: f.grade, deskripsi: f.deskripsi, urut: parseAngka(f.urut), aktif: baru ? true : f.aktif };
       if (baru) data.stokAwal = parseAngka(f.stokAwal);
       setBusy(btn, true, 'Menyimpan…');
       var langkah = Promise.resolve();

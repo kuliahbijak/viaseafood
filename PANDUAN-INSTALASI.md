@@ -1,10 +1,12 @@
-# Panduan Instalasi — Via Seafood "Buku Kas Laut" v1.0.0
+# Panduan Instalasi — Via Seafood "Buku Kas Laut" v1.0.1
 
 Aplikasi web pembukuan **pesanan harian, stok cold storage, piutang, keuangan, rekap pelanggan, WhatsApp & dokumen** untuk Via Seafood.
 Backend: **Google Apps Script** (REST API) + **Google Sheets** sebagai database + **Google Drive** untuk berkas.
 Frontend: halaman web statis di **GitHub Pages** (gratis, HTTPS).
 
 > Disusun oleh **Kelas @khoirulfajarid** · khoirulfajar.abughazi@gmail.com
+
+> **Revisi v1.0.1 (12 Okt 2026)** — (1) Rekap Pelanggan kini bisa dicetak **keseluruhan** maupun **per pelanggan** secara lengkap; (2) setiap pelanggan (mis. restoran) punya rekap **PDF dan Excel** sendiri, termasuk cetak massal semua restoran sekaligus; (3) perbaikan input nominal Rupiah (Harga, diskon, uang diterima, DP, kas, pembayaran) — angka **0** kini bisa diketik. Sudah memakai v1.0.0? Lihat [Bagian I → Memperbarui dari v1.0.0 ke v1.0.1](#memperbarui-dari-v100-ke-v101).
 
 ---
 
@@ -362,6 +364,24 @@ Tersedia 3 model bawaan (80 mm, 58 mm, 58 mm Ultra Hemat). Gunakan **⋮ → Dup
 
 Setiap dokumen terbit memiliki **nomor otomatis**, **QR verifikasi** & **sidik SHA-256**. Siapa pun bisa memindai QR untuk mengecek keaslian di halaman verifikasi. Data yang sama dicetak ulang → memakai berkas yang sama (tidak membuat nomor baru). Dokumen bisa **ditarik** dari **Arsip Terbit**. **Cetak Nota Massal / Tagihan Massal** menghasilkan ZIP di Drive.
 
+### F4. Rekap Pelanggan — keseluruhan & per pelanggan (PDF / Excel)
+
+Menu **Rekap Pelanggan** → pilih bulan → tombol **Rekap PDF / Excel ▾**:
+
+| Pilihan | Hasil |
+|---|---|
+| **Rekap keseluruhan — PDF** / **— Excel** | Satu dokumen berisi semua pelanggan pada bulan itu (seperti sebelumnya, kini juga bisa Excel) |
+| **Rekap lengkap per pelanggan (PDF / Excel)…** | Pilih pelanggan (bisa diketik nama restorannya), periode **bulan** atau **rentang tanggal** (maks. 366 hari), lalu **Unduh PDF** atau **Unduh Excel** |
+| **Rekap semua pelanggan, masing-masing PDF + Excel (ZIP)…** *(Owner)* | Pilih bulan & tipe (bawaan **Restoran**, bisa *Semua tipe*). Setiap pelanggan dibuatkan **1 PDF + 1 Excel**, dikumpulkan dalam satu ZIP di Drive — progres terlihat di layar |
+
+Jalan pintas: di tabel rekap ada kolom **Rekap Pelanggan** berisi tombol **PDF** dan **Excel** di setiap baris, dan di panel detail pelanggan ada tombol **Rekap PDF** / **Rekap Excel**.
+
+**Isi rekap per pelanggan:** profil (tipe, WA, alamat, langganan, tempo), ringkasan belanja (jumlah nota, hari belanja, total belanja, diskon, total berat, rata-rata per nota, nota lunas vs tempo, **sisa piutang**, produk favorit), **daftar semua nota** (tanggal, jam, nomor, rincian, berat, total, metode, status Lunas/Tempo/Dibatalkan, jatuh tempo, sisa), **ringkasan per produk**, dan lembar **Rincian Item** (setiap barang per nota). Versi Excel memakai angka asli (bisa dijumlah/difilter), PDF siap kirim ke pelanggan. Setiap berkas ber-QR verifikasi seperti dokumen lain.
+
+- Staff yang memiliki izin **Lihat rekap** bisa mengunduh rekap per pelanggan, tetapi **nominal sisa piutang tidak ditampilkan** dan menu massal (ZIP) hanya untuk Owner.
+- Desainnya bisa diubah di **Dokumen & Struk → Template Dokumen → Rekap Lengkap per Pelanggan** (Google Sheets, 2 lembar: *Rekap* & *Rincian Item*) dengan cara yang sama seperti F3.
+- Pelanggan tanpa transaksi pada periode yang dipilih akan diberi tahu ("… tidak memiliki transaksi pada …") dan dilewati pada cetak massal.
+
 ---
 
 ## Bagian G — Printer thermal
@@ -421,6 +441,24 @@ Fungsi manual di editor Apps Script (pilih fungsi → ▶ Run):
    ```
 3. Tunggu 1–2 menit. Bila tampilan belum berubah: **Ctrl + Shift + R** atau buka di jendela Incognito.
 
+### Memperbarui dari v1.0.0 ke v1.0.1
+
+Data, pengaturan, template & akun **tidak berubah** — cukup ganti berkas berikut.
+
+**Backend** — hanya 3 berkas yang berubah (berkas `.gs` lain biarkan apa adanya):
+
+| Berkas | Perubahan |
+|---|---|
+| `Modul.gs` | Nota lunas boleh bernilai Rp 0 (bonus/sampel); nota tempo tetap wajib > Rp 0 |
+| `DokumenVS.gs` | Data & template **Rekap Lengkap per Pelanggan** (PDF + Excel), cetak massal per tipe |
+| `MesinDokumen.gs` | Template baru dibuat otomatis saat pertama dicetak; ZIP massal berisi PDF + Excel |
+
+1. Buka editor Apps Script → klik masing-masing berkas di atas → **Ctrl+A** → tempel isi baru → **Ctrl+S**.
+2. Jalankan `upgradeSkema` sekali (membuat template *Rekap Lengkap per Pelanggan* di folder Template). Bila terlewat, template tetap dibuat otomatis saat rekap per pelanggan pertama kali dicetak.
+3. **Deploy → Manage deployments → ✏️ Edit → Version: New version → Deploy** (URL tetap sama).
+
+**Frontend** — ekstrak `via-seafood-frontend.zip` versi baru, salin **semua isinya kecuali `js/config.js`** ke folder repository Anda (timpa), lalu `git add .` → `git commit -m "Update v1.0.1"` → `git push`. Versi di kiri bawah aplikasi berubah menjadi **v1.0.1** setelah browser memuat berkas baru (tekan **Ctrl + Shift + R** bila masih v1.0.0).
+
 ---
 
 ## Batas kuota Google
@@ -457,6 +495,9 @@ Aplikasi dirancang hemat kuota: pekerja latar hanya bekerja bila ada antrean, da
 | Gambar logo tidak tampil | Berbagi publik Drive dibatasi admin | Otomatis memakai jalur cadangan; bila tetap gagal, pakai tombol **URL** dengan gambar dari hosting lain |
 | "Exceeded maximum execution time" / kuota trigger habis | Kuota harian akun Gmail | Jalankan `matikanKeepWarm`, pertimbangkan Google Workspace |
 | Tampilan lama setelah update | Cache browser | Ctrl+Shift+R atau Incognito |
+| "Nota tempo/hutang harus bernilai lebih dari Rp 0" | Semua harga item Rp 0 tetapi status Hutang/Tempo | Nota Rp 0 (bonus/sampel) simpan sebagai **Lunas**; nota tempo harus punya nilai |
+| Rekap per pelanggan: "… tidak memiliki transaksi pada …" | Pelanggan tidak belanja pada periode itu | Pilih bulan lain atau **Rentang tanggal** |
+| Rekap per pelanggan: "Template untuk dokumen ini belum tersedia" | Backend masih v1.0.0 (frontend sudah v1.0.1) | Ganti `DokumenVS.gs` & `MesinDokumen.gs`, jalankan `upgradeSkema`, Deploy → New version |
 
 ---
 

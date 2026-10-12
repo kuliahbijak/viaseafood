@@ -10,7 +10,7 @@ var Pelanggan = {
     var b = AppState.brand || {};
     return '<div class="page-head"><div><div class="eyebrow">Rekapitulasi Mitra <span class="dot"></span><span class="loc">' + esc(b.lokasi || '') + '</span></div><h1 class="page-title">Rekap Pelanggan</h1><p class="page-sub">Belanja bulanan per pelanggan, frekuensi transaksi, dan status pembayaran</p></div>' +
       '<div class="page-actions"><div class="seg" style="padding:4px"><button data-act="geser" data-n="-1" aria-label="Bulan sebelumnya">' + ic('chevron-left', 'sm') + '</button><button class="on" id="rkPer" style="min-width:140px" data-act="pilihPer"></button><button data-act="geser" data-n="1" aria-label="Bulan berikutnya">' + ic('chevron-right', 'sm') + '</button></div>' +
-      '<button class="btn btn-outline" data-act="cetak">' + ic('file-text', 'sm') + 'Rekap PDF</button>' +
+      '<button class="btn btn-outline" data-act="cetak">' + ic('file-text', 'sm') + 'Rekap PDF / Excel ' + ic('chevron-down', 'sm') + '</button>' +
       (App.izin('pelanggan_kelola') ? '<button class="btn btn-accent btn-lg" data-act="tambah">' + ic('user-plus') + 'Pelanggan Baru</button>' : '') + '</div></div>' +
       '<div class="card" style="margin-bottom:var(--gut)">' + tabsHtml([{ id: 'rekap', label: 'Rekap Bulanan', ikon: 'chart-column' }, { id: 'daftar', label: 'Daftar Pelanggan', ikon: 'contact-round' }], 'rekap') + '</div>' +
       '<div id="rkPanel"><div class="kpis" id="rkKpi"></div>' +
@@ -33,7 +33,7 @@ var Pelanggan = {
         var m = modal({ judul: 'Pilih Periode', ikon: 'calendar', isi: '<input type="month" class="input" id="ppBln" value="' + st.periode + '" max="' + periodeIni() + '">', foot: '<button class="btn btn-outline" data-x>Batal</button><button class="btn btn-primary" id="ppOk">Tampilkan</button>' });
         m.$('#ppOk').onclick = function () { var v = m.$('#ppBln').value; if (v) { st.periode = v > periodeIni() ? periodeIni() : v; m.close(); self.muat(el); } };
       },
-      cetak: function (b) { Dokumen.cetak('REKAP_PELANGGAN', st.periode, b); },
+      cetak: function (b) { self.menuRekap(b); },
       tambah: function () { self.form(null); },
       ekspor: function () { self.ekspor(); },
       eksporDf: function () { self.eksporDaftar(); },
@@ -45,7 +45,7 @@ var Pelanggan = {
     el.querySelector('#rkFilter').onchange = function (e) { st.filter = e.target.value; self.render(el); };
     el.querySelector('#dfCari').oninput = debounce(function () { self.renderDaftar(el); }, 200);
     el.querySelector('#dfSemua').onchange = function () { st.daftar = null; self.muatDaftar(el); };
-    el.querySelector('#rkTbl').addEventListener('click', function (e) { var w = e.target.closest('[data-wa]'); if (w) { e.stopPropagation(); window.open('https://wa.me/' + hp08(w.dataset.wa).replace(/^0/, '62'), '_blank', 'noopener'); return; } var tr = e.target.closest('tr[data-id]'); if (tr && tr.dataset.id) self.detail(tr.dataset.id); });
+    el.querySelector('#rkTbl').addEventListener('click', function (e) { var rk = e.target.closest('[data-rk]'); if (rk) { e.stopPropagation(); self.rekapPlg(rk.closest('tr').dataset.id, rk.dataset.rk, rk); return; } var w = e.target.closest('[data-wa]'); if (w) { e.stopPropagation(); window.open('https://wa.me/' + hp08(w.dataset.wa).replace(/^0/, '62'), '_blank', 'noopener'); return; } var tr = e.target.closest('tr[data-id]'); if (tr && tr.dataset.id) self.detail(tr.dataset.id); });
     el.querySelector('#dfTbl').addEventListener('click', function (e) { var ed = e.target.closest('[data-edit]'); var tr = e.target.closest('tr[data-id]'); if (!tr) return; var p = (st.daftar || []).filter(function (x) { return x.id === tr.dataset.id; })[0]; if (ed) { e.stopPropagation(); self.form(p); return; } self.detail(tr.dataset.id); });
   },
   show: function (el, param) {
@@ -58,7 +58,7 @@ var Pelanggan = {
     el.querySelector('#rkPer').textContent = periodeLabel(st.periode);
     var c = swrPeek(this.key()); if (!c) { el.querySelector('#rkTbl tbody').innerHTML = skeletonRows(6, 7); el.querySelector('#rkKpi').innerHTML = ''; }
     return swr(this.key(), 'pelanggan.rekap', { periode: st.periode }, function (d) { if (d.periode !== st.periode) return; st.data = d; self.render(el); }, { fresh: st.periode === periodeIni() ? 60000 : 600000, force: paksa,
-      onError: function (r) { el.querySelector('#rkTbl tbody').innerHTML = '<tr><td colspan="7">' + retryBox(r) + '</td></tr>'; } });
+      onError: function (r) { el.querySelector('#rkTbl tbody').innerHTML = '<tr><td colspan="8">' + retryBox(r) + '</td></tr>'; } });
   },
   render: function (el) {
     var st = this.st, d = st.data; if (!d) return;
@@ -81,17 +81,68 @@ var Pelanggan = {
     });
     rows = sortRows(rows, st.key, st.dir); st.filtered = rows;
     var maks = Math.max.apply(null, d.rows.map(function (r) { return r.total; }).concat([1]));
-    el.querySelector('#rkTbl thead').innerHTML = '<tr><th class="c hide-m" style="width:48px">#</th>' + thSort('Pelanggan', 'nama', st) + thSort('Transaksi', 'transaksi', st, 'c hide-m') + thSort('Total Belanja', 'total', st, 'r') + thSort('Rata-rata', 'rata', st, 'r hide-m') + thSort('Terakhir', 'terakhir', st, 'hide-m') + '<th class="c">Pembayaran</th></tr>';
+    el.querySelector('#rkTbl thead').innerHTML = '<tr><th class="c hide-m" style="width:48px">#</th>' + thSort('Pelanggan', 'nama', st) + thSort('Transaksi', 'transaksi', st, 'c hide-m') + thSort('Total Belanja', 'total', st, 'r') + thSort('Rata-rata', 'rata', st, 'r hide-m') + thSort('Terakhir', 'terakhir', st, 'hide-m') + '<th class="c">Pembayaran</th><th class="c">Rekap Pelanggan</th></tr>';
     var rank = {}; sortRows(d.rows, 'total', -1).forEach(function (r, i) { rank[r.id + r.nama] = i + 1; });
     el.querySelector('#rkTbl tbody').innerHTML = rows.length ? rows.map(function (r) {
       var stp = r.statusPiutang === 'Lunas' ? '<span class="badge b-lunas">' + ic('circle-check', 'sm') + 'Lunas</span>' : '<span class="badge ' + (r.statusPiutang === 'Lewat Tempo' ? 'b-hutang' : 'b-sebagian') + '">' + ic('clock-3', 'sm') + esc(r.statusPiutang) + '</span>' + (owner && r.sisaPiutang ? '<div class="sub text-coral" style="font-weight:600">' + rp(r.sisaPiutang) + '</div>' : '');
       return '<tr class="' + (r.id ? 'click' : '') + '" data-id="' + esc(r.id) + '"><td class="c hide-m"><span class="stepper-n" style="margin:auto;' + (rank[r.id + r.nama] > 3 ? 'background:var(--sand-2);color:var(--ink-2)' : '') + '">' + rank[r.id + r.nama] + '</span></td>' +
         '<td class="full-m"><div class="cust"><span class="avatar ' + avatarKelas(r.nama) + '">' + inisial(r.nama) + '</span><div><div class="row gap-s" style="flex-wrap:wrap"><b>' + esc(r.nama) + '</b>' + (r.langganan ? '<span class="tag-langganan">Langganan</span>' : '') + '</div><div class="sub">' + esc(r.tipe || 'Pelanggan umum') + (r.wa ? ' • <a href="#" data-wa="' + esc(r.wa) + '">' + esc(hpTampil(r.wa)) + '</a>' : '') + '</div></div></div></td>' +
         '<td class="c hide-m num"><b>' + r.transaksi + '</b> <span class="muted">nota</span></td><td class="r"><span class="total">' + rp(r.total) + '</span><div class="progress mist" style="height:5px;margin-top:5px;min-width:90px"><i style="width:' + Math.max(3, r.total / maks * 100) + '%"></i></div></td>' +
-        '<td class="r num hide-m">' + rp(r.rata) + '</td><td class="hide-m muted">' + tglSingkat(r.terakhir) + '</td><td class="c">' + stp + '</td></tr>';
-    }).join('') : '<tr><td colspan="7">' + emptyState('users-round', d.rows.length ? 'Tidak ada pelanggan yang cocok' : 'Belum ada transaksi ' + periodeLabel(st.periode), d.rows.length ? 'Ubah filter pencarian.' : 'Rekap terisi otomatis dari pesanan harian.') + '</td></tr>';
+        '<td class="r num hide-m">' + rp(r.rata) + '</td><td class="hide-m muted">' + tglSingkat(r.terakhir) + '</td><td class="c">' + stp + '</td>' +
+        '<td class="c nowrap">' + (r.id ? '<button class="btn btn-ghost btn-xs" data-rk="pdf" title="Rekap lengkap ' + esc(r.nama) + ' (PDF)">' + ic('file-text', 'sm') + 'PDF</button><button class="btn btn-ghost btn-xs" data-rk="xlsx" title="Rekap lengkap ' + esc(r.nama) + ' (Excel)">' + ic('sheet', 'sm') + 'Excel</button>' : '<span class="muted">–</span>') + '</td></tr>';
+    }).join('') : '<tr><td colspan="8">' + emptyState('users-round', d.rows.length ? 'Tidak ada pelanggan yang cocok' : 'Belum ada transaksi ' + periodeLabel(st.periode), d.rows.length ? 'Ubah filter pencarian.' : 'Rekap terisi otomatis dari pesanan harian.') + '</td></tr>';
     var tot = rows.reduce(function (s, r) { return s + r.total; }, 0);
     el.querySelector('#rkFoot').innerHTML = '<span><b>' + rows.length + '</b> pelanggan • total <b>' + rp(tot) + '</b> • ' + periodeLabel(st.periode) + '</span><span class="muted" style="font-size:12px">Rekap hari lalu dihitung otomatis tiap 10 menit; hari ini real-time.</span>';
+  },
+  /* ---------- rekap PDF/Excel: keseluruhan & per pelanggan ---------- */
+  menuRekap: function (btn) {
+    var self = this, per = this.st.periode, items = [
+      { label: 'Rekap keseluruhan ' + periodeLabel(per) + ' — PDF', ikon: 'file-text', fn: function () { Dokumen.cetak('REKAP_PELANGGAN', per, btn); } },
+      { label: 'Rekap keseluruhan ' + periodeLabel(per) + ' — Excel', ikon: 'sheet', fn: function () { Dokumen.cetak('REKAP_PELANGGAN', per, btn, { format: 'xlsx' }); } },
+      '-',
+      { label: 'Rekap lengkap per pelanggan (PDF / Excel)…', ikon: 'contact-round', fn: function () { self.pilihRekap(); } }];
+    if (App.owner()) items.push({ label: 'Rekap semua pelanggan, masing-masing PDF + Excel (ZIP)…', ikon: 'files', fn: function () { Dokumen.massal('REKAP_PER_PELANGGAN', { periode: per }); } });
+    popMenu(btn, items);
+  },
+  /** Rekap lengkap satu pelanggan. ref default = pelanggan + periode yang sedang dilihat. */
+  rekapPlg: function (id, format, btn, ref) {
+    if (!id) return toast('Pelanggan umum tidak punya rekap', 'Rekap per pelanggan hanya untuk pelanggan terdaftar.', 'warn');
+    Dokumen.cetak('REKAP_PER_PELANGGAN', ref || id + '_' + this.st.periode, btn, { format: format === 'xlsx' ? 'xlsx' : 'pdf' });
+  },
+  pilihRekap: function (idAwal) {
+    var self = this, st = this.st, rows = (st.data && st.data.rows || []).filter(function (r) { return r.id; }), aktif = {};
+    rows.forEach(function (r) { aktif[r.id] = r; });
+    var daftar = rows.map(function (r) { return { id: r.id, nama: r.nama, tipe: r.tipe, wa: r.wa, trx: r.transaksi, total: r.total }; })
+      .concat(AppState.pelanggan.filter(function (p) { return !aktif[p.id]; }).map(function (p) { return { id: p.id, nama: p.nama, tipe: p.tipe, wa: p.wa, trx: 0, total: 0 }; }));
+    var pilih = daftar.filter(function (x) { return x.id === idAwal; })[0] || null, mode = 'bulan';
+    var m = modal({ judul: 'Rekap Lengkap per Pelanggan', ikon: 'contact-round', lebar: 'mid', sub: 'Daftar nota, status bayar, ringkasan per produk & rincian item — PDF dan Excel.',
+      isi: fld('Pelanggan', '<div id="rpWrap"><div class="with-ic">' + ic('store') + '<input class="input" id="rpPlg" placeholder="Cari nama pelanggan / restoran…" autocomplete="off"></div></div>', { req: true, hint: 'Urutan teratas = belanja terbesar ' + periodeLabel(st.periode) }) +
+        '<div class="field mt"><label>Periode</label><div class="seg" id="rpMode" style="width:100%"><button type="button" class="on" data-m="bulan" style="flex:1">' + esc(periodeLabel(st.periode)) + '</button><button type="button" data-m="rentang" style="flex:1">Rentang tanggal</button></div></div>' +
+        '<div class="grid-2 mt" id="rpRentang" hidden>' + fld('Dari', '<input class="input" type="date" id="rpDari" value="' + st.periode + '-01" max="' + hariIni() + '">') + fld('Sampai', '<input class="input" type="date" id="rpSampai" value="' + (st.periode === periodeIni() ? hariIni() : tglTambah(periodeGeser(st.periode, 1) + '-01', -1)) + '" max="' + hariIni() + '">') + '</div>' +
+        '<div class="note-teal mt">' + ic('info', 'sm') + '<span>Isi rekap: profil pelanggan, ringkasan belanja, <b>daftar semua nota</b> (status lunas/tempo/batal' + (App.owner() ? ' & sisa tagihan' : '') + '), <b>ringkasan per produk</b>, dan lembar <b>rincian setiap item</b>.</span></div>',
+      foot: '<button class="btn btn-outline" data-x>Batal</button><button class="btn btn-outline" id="rpXls">' + ic('sheet', 'sm') + 'Unduh Excel</button><button class="btn btn-primary" id="rpPdf">' + ic('file-text', 'sm') + 'Unduh PDF</button>' });
+    var inp = m.$('#rpPlg');
+    if (pilih) inp.value = pilih.nama;
+    Combo({ el: m.$('#rpWrap'), items: function () { return daftar; }, cari: function (x) { return x.nama + ' ' + (x.tipe || '') + ' ' + (x.wa || ''); },
+      render: function (x) { return '<span class="avatar ' + avatarKelas(x.nama) + '" style="width:30px;height:30px;font-size:11px">' + inisial(x.nama) + '</span><div class="cm"><b>' + esc(x.nama) + '</b><span>' + esc([x.tipe, x.trx ? x.trx + ' nota • ' + rpRingkas(x.total) : 'belum ada nota ' + periodeLabel(st.periode)].filter(Boolean).join(' • ')) + '</span></div>'; },
+      onPick: function (x) { pilih = x; inp.value = x.nama; inp.classList.remove('is-err'); } });
+    inp.addEventListener('input', function () { if (pilih && inp.value !== pilih.nama) pilih = null; });
+    m.$('#rpMode').onclick = function (e) { var b = e.target.closest('[data-m]'); if (!b) return; mode = b.dataset.m; m.$$('#rpMode button').forEach(function (x) { x.classList.toggle('on', x === b); }); m.$('#rpRentang').hidden = mode !== 'rentang'; };
+    var jalan = function (format, btn) {
+      if (!pilih) { inp.classList.add('is-err'); inp.focus(); return toast('Pilih pelanggan', 'Ketik lalu pilih nama dari daftar.', 'warn'); }
+      var ref = pilih.id + '_' + st.periode;
+      if (mode === 'rentang') {
+        var dari = m.$('#rpDari').value, sampai = m.$('#rpSampai').value;
+        if (!dari || !sampai) return toast('Isi rentang tanggal', '', 'warn');
+        if (dari > sampai) { var t = dari; dari = sampai; sampai = t; }
+        if (tglSelisih(dari, sampai) > 366) return toast('Rentang terlalu panjang', 'Maksimal 1 tahun per rekap.', 'warn');
+        ref = pilih.id + '_' + dari + '_' + sampai;
+      }
+      m.close(); self.rekapPlg(pilih.id, format, btn, ref);
+    };
+    m.$('#rpPdf').onclick = function () { jalan('pdf', null); };
+    m.$('#rpXls').onclick = function () { jalan('xlsx', null); };
+    if (!pilih) setTimeout(function () { inp.focus(); }, 60);
   },
   ekspor: function () {
     var rows = this.st.filtered || [], owner = App.owner();
@@ -182,6 +233,7 @@ var Pelanggan = {
         return '<tr class="click' + (o.status === 'Batal' ? ' dim' : '') + '" data-nota="' + esc(o.id) + '"><td class="id">#' + esc(o.id) + '<div class="sub">' + tglSingkat(o.tanggal) + ' ' + esc(String(o.waktu || '').slice(0, 5)) + '</div></td><td class="r"><span class="total">' + rp(o.total) + '</span></td><td class="c">' + badgeStatus(o.status, o.piutangId) + '</td></tr>';
       }).join('') + '</tbody></table></div>' : '<p class="muted">Belum ada nota di periode ini.</p>') + '</div>';
       d.set(h, (App.izin('pelanggan_kelola') ? '<button class="btn btn-outline" data-a="edit">' + ic('pencil', 'sm') + 'Edit</button>' : '') + (p.wa ? '<a class="btn btn-wa" target="_blank" rel="noopener" href="https://wa.me/' + hp08(p.wa).replace(/^0/, '62') + '">' + ic('message-circle', 'sm') + 'WhatsApp</a>' : '') +
+        '<button class="btn btn-outline" data-a="rekapPdf">' + ic('file-text', 'sm') + 'Rekap PDF</button><button class="btn btn-outline" data-a="rekapXls">' + ic('sheet', 'sm') + 'Rekap Excel</button>' +
         (owner && sisa ? '<button class="btn btn-primary" data-a="tagihan">' + ic('file-text', 'sm') + 'Surat Tagihan PDF</button>' : ''));
       p.bulan.forEach(function (b) { if (b.total > maks) maks = b.total; });
       Grafik.render(d.$('#pdChart'), { tipe: 'batang', labels: p.bulan.map(function (b) { return BLN[+b.periode.slice(5, 7) - 1]; }), labelTip: p.bulan.map(function (b) { return periodeLabel(b.periode) + ' • ' + b.transaksi + ' nota'; }), series: [{ nama: 'Belanja', data: p.bulan.map(function (b) { return b.total; }), warna: '#0D4F4F' }], kiri: 44 });
@@ -192,6 +244,7 @@ var Pelanggan = {
         if (!a) return;
         if (a.dataset.a === 'edit') { d.close(); self.form(p, function () { self.detail(id); }); }
         if (a.dataset.a === 'tagihan') Dokumen.cetak('TAGIHAN', p.id, a);
+        if (a.dataset.a === 'rekapPdf' || a.dataset.a === 'rekapXls') self.rekapPlg(p.id, a.dataset.a === 'rekapXls' ? 'xlsx' : 'pdf', a, p.id + '_' + per);
       });
     });
   }

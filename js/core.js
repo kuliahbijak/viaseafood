@@ -4,7 +4,7 @@
    (timeout, retry, reqId idempoten, dedupe, batch), router hash, komponen UI.
    ========================================================================== */
 'use strict';
-var VERSI_FE = '1.0.0';
+var VERSI_FE = '1.0.1';
 var LS_PREFIX = 'vs:v1:';
 
 var AppState = { token: '', user: null, boot: null, cfg: {}, brand: {}, produk: [], pelanggan: [], hariIni: '', online: true, tables: {} };
@@ -146,6 +146,8 @@ function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function
 function rp(n, opt) { n = Math.round(Number(n) || 0); var s = String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); return (n < 0 ? '-' : '') + 'Rp ' + s; }
 function rpRingkas(n) { n = Number(n) || 0; var a = Math.abs(n); if (a >= 1e9) return 'Rp ' + angka(n / 1e9, 1) + ' M'; if (a >= 1e6) return 'Rp ' + angka(n / 1e6, 1) + ' Jt'; if (a >= 1e3) return 'Rp ' + angka(n / 1e3, 0) + ' rb'; return rp(n); }
 function angka(n, des) { n = Number(n) || 0; if (des == null) des = Math.round(n) === n ? 0 : (Math.round(n * 10) === n * 10 ? 1 : 2); var s = n.toFixed(des).split('.'); return s[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.') + (s[1] && +s[1] ? ',' + s[1].replace(/0+$/, '') : ''); }
+/** Nominal Rupiah (bilangan bulat): ambil digitnya saja → '9.5000' / 'Rp 95.000' / '95,000' tetap terbaca benar saat diketik. */
+function parseRp(v) { if (typeof v === 'number') return isFinite(v) ? Math.round(v) : 0; var s = String(v == null ? '' : v).replace(/,\d{1,2}\s*$/, '').replace(/[^\d]/g, ''); return s ? Number(s) : 0; }
 function parseAngka(v) { if (typeof v === 'number') return v; var s = String(v || '').replace(/[^0-9,.\-]/g, ''); if (/,\d{1,3}$/.test(s)) s = s.replace(/\./g, '').replace(',', '.'); else s = s.replace(/\.(?=\d{3}(\D|$))/g, ''); var n = parseFloat(s); return isFinite(n) ? n : 0; }
 var BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 var BLN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -425,12 +427,12 @@ function inp(name, val, attr) { return '<input class="input" name="' + name + '"
 function sel(name, list, val, attr, kosong) { return '<select class="select" name="' + name + '" id="f_' + name + '" ' + (attr || '') + '>' + selectOpts(list, val, kosong) + '</select>'; }
 function txa(name, val, attr) { return '<textarea class="textarea" name="' + name + '" id="f_' + name + '" ' + (attr || '') + '>' + esc(val == null ? '' : val) + '</textarea>'; }
 function sakelar(name, on, attr) { return '<label class="switch"><input type="checkbox" name="' + name + '" id="f_' + name + '"' + (on ? ' checked' : '') + ' ' + (attr || '') + '><span></span></label>'; }
-function rpInp(name, val, attr) { return '<div class="affix"><span class="ad">Rp</span><input name="' + name + '" id="f_' + name + '" inputmode="numeric" data-rp value="' + (val ? angka(val) : '') + '" ' + (attr || '') + '></div>'; }
+function rpInp(name, val, attr) { return '<div class="affix"><span class="ad">Rp</span><input name="' + name + '" id="f_' + name + '" inputmode="numeric" data-rp value="' + (val === '' || val == null ? '' : angka(parseRp(val))) + '" ' + (attr || '') + '></div>'; }
 /** Format otomatis input rupiah (data-rp) saat diketik. */
 document.addEventListener('input', function (e) {
   var t = e.target; if (!t.matches || !t.matches('input[data-rp]')) return;
-  var pos = t.value.length - t.selectionStart, n = parseAngka(t.value);
-  t.value = t.value.trim() === '' ? '' : angka(Math.round(n)); try { t.setSelectionRange(t.value.length - pos, t.value.length - pos); } catch (x) { }
+  var pos = t.value.length - (t.selectionStart == null ? t.value.length : t.selectionStart), kosong = !/\d/.test(t.value);
+  t.value = kosong ? '' : angka(parseRp(t.value)); try { t.setSelectionRange(t.value.length - pos, t.value.length - pos); } catch (x) { }
 });
 function tabsHtml(list, aktif, cls) { return '<div class="tabs ' + (cls || '') + '" role="tablist">' + list.map(function (t) { return '<button type="button" role="tab" data-tab="' + t.id + '" class="' + (t.id === aktif ? 'on' : '') + '">' + (t.ikon ? ic(t.ikon, 'sm') : '') + esc(t.label) + (t.n ? '<span class="n">' + t.n + '</span>' : '') + '</button>'; }).join('') + '</div>'; }
 function pasangTabs(root, fn) { root.addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (!b || !root.contains(b)) return; var wrap = b.parentNode; wrap.querySelectorAll('[data-tab]').forEach(function (x) { x.classList.toggle('on', x === b); }); fn(b.dataset.tab, b); }); }

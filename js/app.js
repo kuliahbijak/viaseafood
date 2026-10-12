@@ -378,7 +378,7 @@ var App = {
       calls = calls.filter(function (c) { return c.ok && !swrPeek(c.k); });
       if (!calls.length) return;
       api('batch', { calls: calls.map(function (c) { return { action: c.a, data: c.d, key: c.k }; }) }).then(function (r) {
-        if (!r.success) return; calls.forEach(function (c) { var x = r.data[c.k]; if (x && x.success) swrPut(c.k, x.data); });
+        if (!r.success) return; calls.forEach(function (c) { var x = r.data[c.k]; if (x && x.success) swrPut(c.k, /^pesanan:/.test(c.k) && window.Pesanan ? Pesanan.hariData(x.data) : x.data); });
       });
     };
     if (window.requestIdleCallback) setTimeout(function () { requestIdleCallback(run, { timeout: 4000 }); }, 1200); else setTimeout(run, 1200);

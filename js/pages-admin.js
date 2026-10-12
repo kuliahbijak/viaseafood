@@ -87,7 +87,7 @@ var Admin = {
   bacaSpec: function (box, nilai) {
     var out = {};
     box.querySelectorAll('[data-k]').forEach(function (x) {
-      var k = x.dataset.k, v = x.type === 'checkbox' ? (x.checked ? 'YA' : 'TIDAK') : x.hasAttribute('data-rp') ? String(Math.round(parseAngka(x.value))) : x.value.trim();
+      var k = x.dataset.k, v = x.type === 'checkbox' ? (x.checked ? 'YA' : 'TIDAK') : x.hasAttribute('data-rp') ? String(parseRp(x.value)) : x.value.trim();
       if (String(nilai[k] == null ? '' : nilai[k]) !== v) out[k] = v;
     });
     return out;
